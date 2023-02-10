@@ -26,26 +26,44 @@ data Bob = Bob String | Sep | Sep2
     deriving (Show, Eq)
 
 data RealTable m a where
-  Rbob :: String -> RealTable m ()
-  Rsep :: RealTable m ()
-  Rsep2 :: RealTable m ()
+    RealCol :: String -> RealTable m ()
+    RealRow :: m () -> RealTable m ()
+    RealTab :: m () -> RealTable m ()
 
 makeSem ''RealTable
 
 mkRealTable :: (Member RealTable r) => Sem r ()
 mkRealTable = do
-    rsep2
-    rsep
-    rbob "a"
-    rbob "b"
-    rbob "c"
-    rsep
-    rbob "a1"
-    rbob "b1"
-    rbob "c1"
+    realTab $ do
+        realRow $ do
+            realCol "a"
+            realCol "b"
+            realCol "c"
+        realRow $ do
+            realCol "a1"
+            realCol "b1"
+            realCol "c1"
+
+realTableToOutput :: Member (Output String) r => Sem (RealTable ': r) a -> Sem r a
+realTableToOutput = interpretH
+    (\case
+        RealCol o -> do
+            output o
+            pureT ()
+        RealRow m -> do
+            mm <- runT m
+            output "row"
+            raise $ realTableToOutput mm
+        RealTab m -> do
+            mm <- runT m
+            output "tab"
+            raise $ realTableToOutput mm
+    )
+
+
 
 data RealTable2 m a where
-  Rbob2 :: [Bob] -> RealTable2 m ()
+    Rbob2 :: [Bob] -> RealTable2 m ()
 
 makeSem ''RealTable2
 
@@ -105,5 +123,11 @@ someFunc = do
                     & (>>= lol)
                     & run
 
+    let zs = mkRealTable
+                & realTableToOutput
+                & fmap fst . runOutputList @String
+                & run
+
+
     putStrLn "someFunc"
-    putStrLn (show ys)
+    putStrLn (show zs)
