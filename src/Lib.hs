@@ -5,6 +5,9 @@ import Polysemy.Output
 import Control.Monad
 import Data.List.Split
 import Data.Function
+import Text.Blaze.Html5 hiding (output, col, row, table, embed)
+import Text.Blaze.Internal
+import Text.Blaze.Renderer.Pretty
 
 data Row m a where
   Row :: m () -> Row m ()
@@ -52,12 +55,14 @@ realTableToOutput = interpretH
             pureT ()
         RealRow m -> do
             mm <- runT m
+            z <- raise $ realTableToOutput mm
             output "row"
-            raise $ realTableToOutput mm
+            pure z
         RealTab m -> do
             mm <- runT m
+            z <- raise $ realTableToOutput mm
             output "tab"
-            raise $ realTableToOutput mm
+            pure z
     )
 
 
@@ -69,6 +74,19 @@ makeSem ''RealTable2
 
 mkRealTable2 :: (Member RealTable2 r) => Sem r ()
 mkRealTable2 = rbob2 [Sep2,Sep,Bob "a",Bob "b", Bob "c", Sep, Bob "a1", Bob "b1", Bob "c1"]
+
+
+realTable2ToOutput :: Member (Embed MarkupM) r => Sem (RealTable2 ': r) a -> Sem r a
+realTable2ToOutput = interpret (\(Rbob2 x) ->
+            embed $ toHtml (show x)
+        )
+
+
+
+
+
+
+
 
 
 mkTable :: (Member Table r, Member Row r, Member Col r) => [[String]] -> Sem r ()
@@ -128,6 +146,11 @@ someFunc = do
                 & fmap fst . runOutputList @String
                 & run
 
+    let qs = mkRealTable2 
+                & realTable2ToOutput
+                & runM @MarkupM
+    
 
     putStrLn "someFunc"
+    putStrLn (renderHtml qs)
     putStrLn (show zs)
