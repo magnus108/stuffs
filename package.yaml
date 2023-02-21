@@ -39,6 +39,7 @@ dependencies:
 - blaze-html
 - blaze-markup
 - split
+- comonad
 
 ghc-options:
 - -Wall

@@ -1,6 +1,8 @@
 module Lib where
     
+import Data.List.NonEmpty
 import Polysemy
+import Control.Comonad
 import Polysemy.Output
 import Control.Monad
 import Data.List.Split
@@ -154,3 +156,19 @@ someFunc = do
     putStrLn "someFunc"
     putStrLn (renderHtml qs)
     putStrLn (show zs)
+
+
+
+
+
+
+data Zip e w a = Zip [e] (w a) [e]
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+
+instance Comonad w => Comonad (Zip e w) where
+    extract (Zip _ a _) = (extract a)
+    duplicate (Zip ls a rs) = Zip ls (extend (\x -> Zip ls x rs) a) rs
+
+
+
