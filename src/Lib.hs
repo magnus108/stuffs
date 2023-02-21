@@ -161,22 +161,53 @@ someFunc = do
 
 
 
-
-data Zip e w a = Zip [e] (w a) [e]
-    deriving (Show, Eq, Functor, Foldable, Traversable)
-
-
-instance Comonad w => Comonad (Zip e w) where
-    extract (Zip _ a _) = (extract a)
-    duplicate (Zip ls a rs) = Zip ls (extend (\x -> Zip ls x rs) a) rs
-
-
 goRight :: NonEmpty a -> Maybe (NonEmpty a)
 goRight (x :| []) = Nothing
 goRight (x :| (y:ys)) = Just ( y :| ys)
 
-
-
-goRight2 :: Zip e NonEmpty a -> Maybe (Zip e NonEmpty a)
+goRight2 :: Zip NonEmpty a -> Maybe (Zip NonEmpty a)
 goRight2 (Zip _ (x :| []) _) = Nothing
 goRight2 (Zip ls (x :| (y:ys)) rs) = Just (Zip ls ( y :| ys) rs)
+
+
+data Zip w a = Zip [a] (w a) [a]
+    deriving (Show, Eq, Functor, Foldable, Traversable)
+
+
+instance Comonad w => Comonad (Zip w) where
+    extract (Zip _ a _) = (extract a)
+    duplicate l@(Zip ls a rs) = Zip [l] (extend (\x -> Zip ls x rs) a) [l] --WRONG
+
+
+data RoseTree a = RoseTree a [RoseTree a]
+    deriving (Eq, Ord, Show, Functor)
+
+instance Comonad RoseTree where
+  extract (RoseTree a _) = a
+  duplicate w@(RoseTree _ as) = RoseTree w (fmap duplicate as)
+
+
+data Context w a = Context [w a] a [w a]
+    deriving (Show, Eq, Functor)
+
+instance Comonad w => Comonad (Context w) where
+  extract (Context _ a _) = a
+  duplicate l@(Context ls a rs) = Context (fmap (\l -> extend (\l' -> Context [] (extract l') []) l) ls) l (fmap (\r -> extend (\r' -> Context [] (extract r') []) r) rs) --WRONG
+
+
+data TreeZipper w a = TreeZipper (w a) [Context w a]
+    deriving (Show, Eq, Functor)
+
+
+instance (Comonad w) => Comonad (TreeZipper w) where
+  extract (TreeZipper a _) = extract a
+  duplicate w@(TreeZipper s as) = TreeZipper (extend (\x -> TreeZipper x as) s) (fmap (\a -> extend (\y -> TreeZipper s []) a)as) 
+
+
+data ForestZipper w a = ForestZipper (Zip (TreeZipper w) a)
+    deriving (Show, Eq, Functor)
+
+
+instance (Comonad w) => Comonad (ForestZipper w) where
+  extract (ForestZipper x) = extract x
+  duplicate w@(ForestZipper x) = ForestZipper (extend (\xx -> ForestZipper $ xx) x)
