@@ -171,4 +171,12 @@ instance Comonad w => Comonad (Zip e w) where
     duplicate (Zip ls a rs) = Zip ls (extend (\x -> Zip ls x rs) a) rs
 
 
+goRight :: NonEmpty a -> Maybe (NonEmpty a)
+goRight (x :| []) = Nothing
+goRight (x :| (y:ys)) = Just ( y :| ys)
 
+
+
+goRight2 :: Zip e NonEmpty a -> Maybe (Zip e NonEmpty a)
+goRight2 (Zip _ (x :| []) _) = Nothing
+goRight2 (Zip ls (x :| (y:ys)) rs) = Just (Zip ls ( y :| ys) rs)
